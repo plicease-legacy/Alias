@@ -1,30 +1,39 @@
 This is the README file for "Alias", the Perl module
 that performs aliasing services.
 
-This is Version 2.0-beta.
+This is Version 2.0.
 
-Perl Version 5.001 or later is required.
+Perl Version 5.001m or later is required.
 
 You may also need MakeMaker Ver. 5.09 or later (check the
-file $PERLSRC/lib/ExtUtils/MakeMaker).
+file $PERLLIB/ExtUtils/MakeMaker.pm).
 
 You may find this module useful if you:
 
    * are tired of dereferencing hash-based object attributes
 
-   * wish to use fewer $ and -> signs
+   * wish perl could make-do with fewer $, -> and {} things 
 
    * are a little scared of using typeglobs
 
    * want the freedom to put what you want, when you want in
-     the symbol table
+     the symbol table without having to deal with wierd syntax
 
-   * need to use constants in your program because you don't
-     trust yourself from changing $PI
+   * need to use constants in your program and you don't
+     trust yourself from changing $PI 
 
-It would be interesting to benchmark how much less/more efficient C<attr> is
-when compared to regular hash access of object attributes under various
-degrees of use.
+This release has the all-new C<attr> function that installs a
+whole hash on the symbol table with implicit localization. This
+allows you to access object attributes without having to deref the
+object everytime, as in most other OO languages.
+
+The C<attr> functionality may belong in the perl core, but I am
+making it available as part of this module for folks to see what
+it "feels like" to have it first.
+
+It would be interesting to benchmark how much less/more efficient 
+C<attr> is when compared to regular hash access of object 
+attributes under various degrees of use.
 
 Comments are always very welcome.
 
@@ -44,3 +53,11 @@ If the tests pass, you can type
       make install
 
 to install the module.
+
+Look for newer versions of this module on CPAN.  The master site for
+CPAN currently is:
+
+   ftp://ftp.funet.fi/pub/languages/perl/CPAN
+
+There may be many others closer to your location.
+

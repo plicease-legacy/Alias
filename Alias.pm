@@ -21,7 +21,8 @@ bootstrap Alias;
 sub alias {
   croak "Need even number of args" if @_ % 2;
   my($pkg) = caller;              # for namespace soundness
-  while (@_) { 
+  while (@_) {
+    # you'd think *foo = \*bar would work. no.
     *{"$pkg\:\:$_[0]"} = (defined($_[1]) and ref($_[1])) ?
                             (ref($_[1]) eq 'GLOB') ? ${$_[1]} : $_[1] : \$_[1];
     shift; shift;
@@ -65,7 +66,7 @@ const - define compile-time constants
     sub new { bless {foo => 1, bar => [2, 3]}, $_[0] }
     sub method {
        attr shift;
-       # $foo and @bar are now local aliases for $_[0]{foo}, @{$_[0]{bar}} etc.
+       # $foo, @bar are now local aliases for $_[0]{foo}, @{$_[0]{bar}} etc.
     }
 
 =head1 DESCRIPTION
@@ -90,12 +91,8 @@ read-only. Any attempt to write to them will fail with a run time
 error. 
 
 Aliases can be dynamically scoped by pre-declaring the target symbol as
-a C<local>.
-
-=item const
-
-This is simply a function alias for C<alias>, described above.  Provided on
-demand at C<use> time, since this reads better for constant declarations.
+a C<local>.  Using C<attr> for is this purpose is more convenient, and
+recommended.
 
 =item attr
 
@@ -108,8 +105,25 @@ types.  Thus the action is the same as saying:
 
 but, in addition, also localizes the aliases.
 
-This can be used for convenient access to hash values and hash-based
-object attributes.
+This can be used for convenient access to hash values and hash-based object
+attributes.  Note that this also makes available the semantics of C<local>
+subroutines. Note also that such subroutines cannot be invoked via method
+call syntax.  This is considered a feature.
+
+=item const
+
+This is simply a function alias for C<alias>, described above.  Provided on
+demand at C<use> time, since it reads better for constant declarations.
+
+=back
+
+=head2 Exports
+
+=over 8
+
+=item alias
+
+=item attr
 
 =back
 
@@ -154,10 +168,11 @@ object attributes.
     # hash/object attributes
     package Foo;
     use Alias;
-    sub new { bless { foo => 1, bar => [2,3], buz => { a => 4} }, $_[0]; }
+    sub new { bless { foo => 1, bar => [2,3], buz => { a => 4},
+                      privsub => sub { "pseudo-private" } }, $_[0]; }
     sub easymeth {
-      attr shift;     # localizes $foo, @bar, and %buz with hash values
-      print join '|', $foo, @bar, %buz, "\n";
+      attr shift;     # localizes $foo, @bar, %buz etc with hash values
+      print join '|', $foo, @bar, %buz, &privsub, "\n";
     }
     $foo = 6;
     @bar = (7,8);
@@ -175,38 +190,50 @@ object attributes.
 It is worth repeating that the aliases created by C<alias> and C<const> will
 be created in the caller's namespace.  If that namespace happens to be
 C<local>ized, the aliases created will be local to that block.  C<attr>
-localizes the aliases for you.  You may use C<attr> as a more convenient
-version of C<alias> by creating an anonymous hash on the fly.
+localizes the aliases for you.
 
 Aliases cannot be lexical, since, by necessity, they live on the
 symbol table. 
 
-Lexicals can be aliased. Note that this gives us a means of reversing
-the action of anonymous type generators C<\>, C<[]> and C<{}>.  Which
-means you can anonymously construct data and give it a symbol-table
-presence when you choose.
+Lexicals can be aliased. Note that this provides a means of reversing the
+action of anonymous type generators C<\>, C<[]> and C<{}>.  This allows you
+to anonymously construct data or code and give it a symbol-table presence
+when you choose.
+
+Any occurrence of C<::> or C<'> in names will be treated as package
+qualifiers, and the value will be aliased in that namespace.
 
 Remember that aliases are very much like references, only you don't
 have to de-reference them as often.  Which means you won't have to
 pound on the dollars so much.
 
-You can make named closures with this scheme, by simply aliasing
-a closure and giving it a symbol table presence.
+You can make named closures with this scheme.
 
 It is possible to alias packages, but that might be construed as
 abuse.
 
-Using this package will lead to a much reduced urge to use typeglobs.
+Using this package will dramatically reduce noise characters in 
+object-oriented perl code.
 
+=head1 BUGS
+
+Tied variables cannot be aliased properly, yet.
+
+The special-cased GLOB situation owes itself to C<*foo = \*bar> being
+broken in Perl.  One of these days..
 
 =head1 VERSION
 
-2.0    XS-ified, and added implicit localization for attr
+Version 2.0       1 Jan 1996
 
-1.3    Added attr (unreleased)
+=head1 HISTORY
+
+2.0    added implicit localization for C<attr> via XS code
+
+1.3    Added C<attr> (unreleased)
 
 1.2    Bugfix in the while loop, and other cleanup. Thanks to Ian Phillips
-       <ian@pipex.net>.
+<ian@pipex.net>.
 
 1.1    Added named closures to pod
 
@@ -220,10 +247,6 @@ Gurusamy Sarathy                gsar@umich.edu
 Copyright (c) 1995 Gurusamy Sarathy. All rights reserved.
 This program is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself.
-
-=head1 VERSION
-
-Version 2.0-beta    18 Dec 1995
 
 =head1 SEE ALSO
 

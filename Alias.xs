@@ -8,9 +8,11 @@ extern "C" {
 }
 #endif
 
+#define save_gp my_save_gp
+
 static void my_save_gp(GV *gv);
 
-/* copied verbatim from scope.c because it is ifdeffed out there */
+/* copied verbatim from scope.c because it is #ifdeffed out -- WHY??? */
 static void
 my_save_gp(gv)
 GV *gv;
@@ -32,10 +34,10 @@ GV *gv;
 }
 
 
-MODULE = Alias		PACKAGE = Alias
+MODULE = Alias		PACKAGE = Alias		PREFIX = alias_
 
 void
-attr(href)
+alias_attr(href)
 	SV *	href
      PPCODE:
 	{
@@ -46,30 +48,47 @@ attr(href)
 		SV *tmpsv;
 		char *key;
 		I32 klen;
-		HE *entry;
 		
-		SvREFCNT_inc(href);         /* so leave below doesn't clobber us */
+		SvREFCNT_inc(hv);           /* in case LEAVE wants to clobber us */
+		LEAVE;                      /* operate at a higher level */
 		
 		(void)hv_iterinit(hv);
-		LEAVE;                      /* operate at a higher level */
-		while (entry = hv_iternext(hv)) {
+		while (val = hv_iternextsv(hv, &key, &klen)) {
 		    GV *gv;
-		    key = hv_iterkey(entry, &klen);
-		    val = hv_iterval(hv, entry);
+		    int stype = SvTYPE(val);
 		    
 		    if (SvROK(val))  {
-			if ((tmpsv = (GV *)SvRV(val)) && (SvTYPE(tmpsv) == SVt_PVGV))
-			    val = tmpsv;
+			if ((tmpsv = SvRV(val))) {
+			    stype = SvTYPE(tmpsv);
+			    if (stype == SVt_PVGV)
+				val = tmpsv;
+			}
 		    }
-		    else
+		    else if (stype != SVt_PVGV)
 			val = sv_2mortal(newRV(val));
-		    /* XXX may need to prepend caller's package to *key here */
-		    gv = gv_fetchpv(key, TRUE, SVt_PVGV);
-		    my_save_gp(gv);
-		    sv_setsv(gv, val);
-		}
 
-		SvREFCNT_dec(href);
-		ENTER;                   /* in lieu pp_leavesub()'s LEAVE */
+		    gv = gv_fetchpv(key, TRUE, SVt_PVGV);
+		    switch (stype) {
+		    case SVt_PVAV:
+			save_ary(gv);
+			break;
+		    case SVt_PVHV:
+			save_hash(gv);
+			break;
+		    case SVt_PVGV:
+			save_gp(gv);        /* hide previous entry in symtab */
+			break;
+		    case SVt_PVCV:
+			SAVESPTR(GvCV(gv));
+			GvCV(gv) = Null(CV*);
+			break;
+		    default:
+			save_scalar(gv);
+			break;
+		    }
+		    sv_setsv(gv, val);      /* alias the SV */
+		}
+		SvREFCNT_dec(hv);
+		ENTER;                      /* in lieu of the LEAVE far beyond */
 	    }
 	}
