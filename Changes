@@ -6,6 +6,13 @@ HISTORY - release history for Alias
 
 =over 8
 
+=item 2.31
+
+save_gp() is now exported from core, so use it instead of our own
+version.  Thanks to Larry Virden <lvirden@cas.org> for the bug report.
+
+Require 5.004.
+
 =item 2.3
 
 The developer versions after 5.003 broke XSUB call semantics when the

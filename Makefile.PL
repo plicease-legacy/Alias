@@ -2,7 +2,7 @@ use ExtUtils::MakeMaker;
 
 WriteMakefile(
     'NAME'	=> 'Alias',
-    'VERSION'	=> '2.3',
+    'VERSION_FROM'	=> 'Alias.pm',
     'linkext'   => {LINKTYPE => 'dynamic'},
     'dist'      => {COMPRESS=>'gzip -9f', SUFFIX => 'gz'}
 );

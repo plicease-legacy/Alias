@@ -8,29 +8,7 @@ extern "C" {
 }
 #endif
 
-static void my_save_gp _((GV *gv));
 static void process_flag _((char *varname, SV **svp, char **strp, STRLEN *lenp));
-
-/* This is available in 5.003_12 and later */
-static void
-my_save_gp(gv)
-    GV *gv;
-{
-    register GP *gp;
-    GP *ogp = GvGP(gv);
-
-    SSCHECK(3);
-    SSPUSHPTR(SvREFCNT_inc(gv));
-    SSPUSHPTR(ogp);
-    SSPUSHINT(SAVEt_GP);
-
-    Newz(602,gp, 1, GP);
-    GvGP(gv) = gp;
-    GvREFCNT(gv) = 1;
-    GvSV(gv) = NEWSV(72,0);
-    GvLINE(gv) = curcop->cop_line;
-    GvEGV(gv) = gv;
-}
 
 static void
 process_flag(varname, svp, strp, lenp)
@@ -63,13 +41,11 @@ MODULE = Alias		PACKAGE = Alias		PREFIX = alias_
 PROTOTYPES: ENABLE
 
 BOOT:
-#ifdef CVf_NODEBUG    
 {
     GV *gv = gv_fetchpv("Alias::attr", FALSE, SVt_PVCV);
     if (gv && GvCV(gv))
 	CvNODEBUG_on(GvCV(gv));
 }
-#endif
 
 
 void
@@ -213,7 +189,7 @@ alias_attr(hashref)
 			save_hash(gv);
 			break;
 		    case SVt_PVGV:
-			my_save_gp(gv);	    /* hide previous entry in symtab */
+			save_gp(gv,TRUE);   /* hide previous entry in symtab */
 			break;
 		    case SVt_PVCV:
 			SAVESPTR(GvCV(gv));

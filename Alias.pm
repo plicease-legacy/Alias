@@ -4,7 +4,7 @@
 
 package Alias;
 
-require 5.003;
+require 5.004;
 require Exporter;
 require DynaLoader;
 
@@ -12,7 +12,7 @@ require DynaLoader;
 @EXPORT = qw(alias attr);
 @EXPORT_OK = qw(const);
 
-$VERSION = $VERSION = '2.3';
+$VERSION = $VERSION = '2.31';
 
 use Carp;
 
@@ -352,7 +352,7 @@ Tied variables cannot be aliased properly, yet.
 
 =head1 VERSION
 
-Version 2.2       1 December 1996
+Version 2.31       22 September 1997
 
 
 =head1 AUTHOR
