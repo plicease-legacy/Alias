@@ -1,7 +1,7 @@
 This is the README file for "Alias", the Perl module
 that performs aliasing services.
 
-This is Version 2.1.
+This is Version 2.2.
 
 Perl Version 5.002 or later is required, and you need to be
 on an XSsible system supported by MakeMaker (which comes with 

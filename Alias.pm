@@ -12,11 +12,14 @@ require DynaLoader;
 @EXPORT = qw(alias attr);
 @EXPORT_OK = qw(const);
 
-$VERSION = $VERSION = '2.1';
+$VERSION = $VERSION = '2.2';
 
 use Carp;
 
 bootstrap Alias;
+
+$Alias::KeyFilter = "";
+$Alias::AttrPrefix = "";
 
 sub alias {
   croak "Need even number of args" if @_ % 2;
@@ -63,11 +66,31 @@ const - define compile-time scalar constants
 
     package Foo;
     use Alias;
-    sub new { bless {foo => 1, bar => [2, 3]}, $_[0] }
-    sub method {
+    sub new { bless {foo => 1, _bar => [2, 3]}, $_[0] }
+    sub a_method {
        my $s = attr shift;
-       # $foo, @bar are now local aliases for $_[0]{foo}, @{$_[0]{bar}} etc.
+       # $foo, @_bar are now local aliases for
+       # $_[0]{foo}, @{$_[0]{_bar}} etc.
     }
+
+    sub b_method {
+      local $Alias::KeyFilter = "_";
+      local $Alias::AttrPrefix = "main::";
+      my $s = attr shift;
+      # local @::_bar is now available, ($foo, $::foo are not)
+    }
+
+    sub c_method {
+      local $Alias::KeyFilter = sub { $_ = shift; return (/^_/ ? 1 : 0) };
+      local $Alias::AttrPrefix = sub {
+                                       $_ = shift;
+				       s/^_(.+)$/main::$1/;
+				       return $_
+				     };
+      my $s = attr shift;
+      # local @::bar is now available, ($foo, $::foo are not)
+    }
+
 
 =head1 DESCRIPTION
 
@@ -75,14 +98,14 @@ Provides general mechanisms for aliasing perl data for convenient access.
 
 =head2 Functions
 
-=over 8
+=over 4
 
 =item alias
 
 Given a list of alias-symbol => value pairs, declares aliases
 in the caller's namespace. If the value supplied is a reference, the
 alias is created for the underlying value instead of the reference
-itself (since no one will use this package to alias references--they
+itself (there is no need to use this module to alias references--they
 are automatically "aliased" on assignment).  This allows the user to
 alias all of Perl's basic types.
 
@@ -90,8 +113,8 @@ If the value supplied is a scalar compile-time constant, the aliases
 become read-only. Any attempt to write to them will fail with a run time
 error. 
 
-Aliases can be dynamically scoped by pre-declaring the target symbol as
-a C<local>.  Using C<attr> for is this purpose is more convenient, and
+Aliases can be dynamically scoped by pre-declaring the target variable as
+C<local>.  Using C<attr> for this purpose is more convenient, and
 recommended.
 
 =item attr
@@ -110,14 +133,18 @@ This can be used for convenient access to hash values and hash-based object
 attributes.  
 
 Note that this makes available the semantics of C<local> subroutines and
-methods.  That makes for some nifty possibilities.  You could make truly
+methods.  That makes for some nifty possibilities.  We could make truly
 private methods by putting anonymous subs within an object.  These subs
-would be available within methods where you will use C<attr>, and will not
-be visible to the outside world as normal methods.  You could forbid 
+would be available within methods where we use C<attr>, and will not
+be visible to the outside world as normal methods.  We could forbid 
 recursion in methods by always putting an empty sub in the object hash 
 with the same key as the method name. This would be useful where a method 
 has to run code from other modules, but cannot be certain whether that 
 module will call it back again.
+
+The default behavior is to create aliases for all the entries in the hash,
+in the callers namespace.  This can be controlled by setting a few options.
+See L<Configuration Variables> for details.
 
 =item const
 
@@ -127,9 +154,39 @@ Note that hashes and arrays cannot be so C<const>rained.
 
 =back
 
+=head2 Configuration Variables
+
+The following configuration variables can be used to control the behavior of
+the C<attr> function.  They are typically set after the C<use Alias;>
+statement.  Another typical usage is to C<local>ize them in a block so that
+their values are only effective within that block.
+
+=over 4
+
+=item $Alias::KeyFilter
+
+Specifies the key prefix used for determining which hash entries will be
+interned by C<attr>.  Can be a CODE reference, in which case it will be
+called with the key, and the boolean return value will determine if
+that hash entry is a candidate attribute.
+
+=item $Alias::AttrPrefix
+
+Specifies a prefix to prepend to the names of localized attributes created
+by C<attr>.  Can be a CODE reference, in which case it will be called with
+the key, and the result will determine the full name of the attribute.  The
+value can have embedded package delimiters ("::" or "'"), which cause the
+attributes to be interned in that namespace instead of the caller's own
+namespace. For example, setting it to "main::" makes C<use strict 'vars';>
+somewhat more palatable (since we can refer to the attributes as C<$::foo>,
+etc., without actually declaring the attributes).
+
+
+=back
+
 =head2 Exports
 
-=over 8
+=over 4
 
 =item alias
 
@@ -139,6 +196,9 @@ Note that hashes and arrays cannot be so C<const>rained.
 
 =head1 EXAMPLES
 
+Run these code snippets and observe the results to become more familiar
+with the features of this module.
+
     use Alias qw(alias const attr);
     $ten = 10;
     alias TEN => $ten, Ten => \$ten, Ten => \&ten,
@@ -147,12 +207,17 @@ Note that hashes and arrays cannot be so C<const>rained.
 
     # aliasing basic types
     $ten = 20;   
-    print "$TEN|$Ten|$ten\n";
+    print "$TEN|$Ten|$ten\n";   # should print "20|20|20"
     sub ten { print "10\n"; }
     @ten = (1..10);
     %ten = (a..j);
-    &Ten;
+    &Ten;                       # should print "10"
     print @Ten, "|", %Ten, "\n";
+
+    # this will fail at run time
+    const _TEN_ => 10;
+    eval { $_TEN_ = 20 };
+    print $@ if $@;
 
     # dynamically scoped aliases
     @DYNAMIC = qw(m n o);
@@ -160,20 +225,26 @@ Note that hashes and arrays cannot be so C<const>rained.
        my $tmp = [ qw(a b c d) ];
        local @DYNAMIC;
        alias DYNAMIC => $tmp, PERM => $tmp;
+
        $DYNAMIC[2] = 'zzz';
+       # prints "abzzzd|abzzzd|abzzzd"
        print @$tmp, "|", @DYNAMIC, "|", @PERM, "\n";
+
        @DYNAMIC = qw(p q r);
+       # prints "pqr|pqr|pqr"
        print @$tmp, "|", @DYNAMIC, "|", @PERM, "\n";
     }
+
+    # prints "mno|pqr"
     print @DYNAMIC, "|", @PERM, "\n";
 
     # named closures
     my($lex) = 'abcd';
     $closure = sub { print $lex, "\n" };
     alias NAMEDCLOSURE => \&$closure;
-    NAMEDCLOSURE();
+    NAMEDCLOSURE();            # prints "abcd"
     $lex = 'pqrs';
-    NAMEDCLOSURE();
+    NAMEDCLOSURE();            # prints "pqrs"
 
     # hash/object attributes
     package Foo;
@@ -192,47 +263,48 @@ Note that hashes and arrays cannot be so C<const>rained.
       my $s = attr shift;    # localizes $foo, @bar, %buz etc with values
       eval { $s->easymeth }; # should fail
       print $@ if $@;
+
+      # prints "1|2|3|a|4|private|"
       print join '|', $foo, @bar, %buz, $s->privmeth, "\n";
     }
 
     $foo = 6;
     @bar = (7,8);
     %buz = (b => 9);
-    Foo->new->easymeth;
+    Foo->new->easymeth;       # this will not recurse endlessly
+
+    # prints "6|7|8|b|9|"
     print join '|', $foo, @bar, %buz, "\n";
 
     # this should fail at run-time
     eval { Foo->new->privmeth };
     print $@ if $@;
 
-    # and this too
-    const _TEN_ => 10;
-    $_TEN_ = 20;
-
 
 =head1 NOTES
 
-It is worth repeating that the aliases created by C<alias> and C<const> 
-will be created in the caller's namespace.  If that namespace happens to 
-be C<local>ized, the aliases created will be local to that block.  
-C<attr> localizes the aliases for you.
+It is worth repeating that the aliases created by C<alias> and C<const> will
+be created in the caller's namespace (we can use the C<AttrPrefix> option to
+specify a different namespace for C<attr>).  If that namespace happens to be
+C<local>ized, the aliases created will be local to that block.  C<attr>
+localizes the aliases for us.
 
-Aliases cannot be lexical, since, by necessity, they live on the
+Aliases cannot be lexical, since, by neccessity, they live on the
 symbol table. 
 
 Lexicals can be aliased. Note that this provides a means of reversing the
-action of anonymous type generators C<\>, C<[]> and C<{}>.  This allows you
+action of anonymous type generators C<\>, C<[]> and C<{}>.  This allows us
 to anonymously construct data or code and give it a symbol-table presence
-when you choose.
+when we choose.
 
 Any occurrence of C<::> or C<'> in names will be treated as package
-qualifiers, and the value will be aliased in that namespace.
+qualifiers, and the value will be interned in that namespace.
 
-Remember that aliases are very much like references, only you don't
-have to de-reference them as often.  Which means you won't have to
+Remember that aliases are very much like references, only we don't
+have to dereference them as often.  Which means we won't have to
 pound on the dollars so much.
 
-You can make named closures with this scheme.
+We can dynamically make subroutines and named closures with this scheme.
 
 It is possible to alias packages, but that might be construed as
 abuse.
@@ -243,15 +315,17 @@ object-oriented perl code.
 
 =head1 BUGS
 
-C<use strict;> is not very usable, since we B<depend> so much
-on the symbol table.
+C<use strict 'vars';> is not very usable, since we B<depend> so much
+on the symbol table.  You can declare the attributes with C<use vars> to
+avoid warnings.  Setting C<$Alias::AttrPrefix> to "main::" is one way
+to avoid C<use vars> and frustration.
 
 Tied variables cannot be aliased properly, yet.
 
 
 =head1 VERSION
 
-Version 2.1       6 April 1996
+Version 2.2       1 December 1996
 
 
 =head1 AUTHOR
@@ -267,5 +341,3 @@ modify it under the same terms as Perl itself.
 perl(1)
 
 =cut
-
-

@@ -8,15 +8,15 @@ TODO - aspirations for Alias
 
 =item 1.
 
-C<attr> will move into perl core when the time comes. Object attributes 
-can then be lexically scoped instead of dynamically, or both.
+C<attr> ought to move into perl core when I get around to hacking it in.
+Object attributes can then be lexically scoped instead of dynamically,
+or both.
 
 =item 2. (nonitem)
 
 You'd think C<const> could be made to work for hashes and arrays via 
-XSive code, but it isn't so easy, since the perl source must be
-heavily involved.  Using C<tie> to achieve this is probably
-simpler.
+XSive code.  But it turns out that the perl source must be heavily
+involved.  Using C<tie> to achieve this is probably simpler.
 
 =back
 

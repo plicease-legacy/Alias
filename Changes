@@ -6,6 +6,14 @@ HISTORY - release history for Alias
 
 =over 8
 
+=item 2.2
+
+Two new options C<$KeyFilter>, and C<$AttrPrefix> added for controlling
+which hash entries are aliased by C<attr>.  This offers one way to avoid
+C<use vars> when using C<use strict 'vars';>.
+
+Documentation, testsuite additions.
+
 =item 2.1    
 
 C<attr> now returns the passed value.
