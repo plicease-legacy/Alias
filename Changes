@@ -6,6 +6,21 @@ HISTORY - release history for Alias
 
 =over 8
 
+=item 2.3
+
+The developer versions after 5.003 broke XSUB call semantics when the
+C<-d> switch is used (to invoke debugger or profiler).  The problem is
+fixed in versions >= 5.003_19.  Added the necessary logic to make use
+of the escape in Alias.xs. Thanks to Josh Purinton <joshp@silmaril.com>
+for reporting the problem.  
+
+Objects are not automatically dereferenced by attr().  They are available
+as scalars instead, thanks to a feature request from Peter Seibel 
+<seibel@organic.com>. ***INCOMPATIBLE CHANGE***
+
+Using attr() in DESTROY subs resulted in deep recursion, fixed.  Thanks
+to Helmut Jarausch <jarausch@igpm.rwth-aachen.de>.
+
 =item 2.2
 
 Two new options C<$KeyFilter>, and C<$AttrPrefix> added for controlling
@@ -52,3 +67,4 @@ Released to perl5-porters@nicoh.com.
 =back
 
 =cut
+

@@ -1,11 +1,30 @@
 This is the README file for "Alias", the Perl module
 that performs aliasing services.
 
-This is Version 2.2.
+This is Version 2.3.
 
-Perl Version 5.002 or later is required, and you need to be
+Perl Version 5.003 or later is required, and you need to be
 on an XSsible system supported by MakeMaker (which comes with 
 perl).
+
+INCOMPATIBLE----CHANGE----INCOMPATIBLE----CHANGE----INCOMPATIBLE---CHANGE
+#                                                                       #
+# Alias::attr() does not dereference blessed references (objects) by	#
+# default any more.  You can still get the old behavior by setting the	#
+# $Alias::Deref option to 1.						#
+#                                                                       #
+INCOMPATIBLE----CHANGE----INCOMPATIBLE----CHANGE----INCOMPATIBLE---CHANGE
+
+#-------BUG_ALERT!----Perl_Developer_Beta_Versions----BUG_ALERT!--------#
+#                                                                       #
+# Alias::attr() doesn't work properly when using the C<-d> switch to    #
+# perl (i.e. the debugger and profiler are unusable) in developer-beta  #
+# perl versions 5.003_01-5.003_18 inclusive.                            #
+# 									#
+# You can either revert back to the stable 5.003 release (which doesn't #
+# have the problem), or upgrade to 5.003_19 or later.  You must do this #
+# before you build this module.                                         #
+#-----------------------------------------------------------------------#
 
 You may find this module useful if you:
 
@@ -43,6 +62,8 @@ Comments are always very welcome.
    gsar@umich.edu
 
 -------------------
+INSTALL
+
 Installation is via the standard mantra.
 The distribution assumes you have dynamic linking available. Type
 

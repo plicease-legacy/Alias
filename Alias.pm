@@ -4,7 +4,7 @@
 
 package Alias;
 
-require 5.002;
+require 5.003;
 require Exporter;
 require DynaLoader;
 
@@ -12,7 +12,7 @@ require DynaLoader;
 @EXPORT = qw(alias attr);
 @EXPORT_OK = qw(const);
 
-$VERSION = $VERSION = '2.2';
+$VERSION = $VERSION = '2.3';
 
 use Carp;
 
@@ -20,6 +20,7 @@ bootstrap Alias;
 
 $Alias::KeyFilter = "";
 $Alias::AttrPrefix = "";
+$Alias::Deref = "";            # don't deref objects
 
 sub alias {
   croak "Need even number of args" if @_ % 2;
@@ -96,18 +97,27 @@ const - define compile-time scalar constants
 
 Provides general mechanisms for aliasing perl data for convenient access.
 
+This module works by putting some values on the symbol table with
+user-supplied names.  Values that are references will get dereferenced into
+their base types.  This means that a value of C<[1,2,3]> with a name of
+"foo" will be made available as C<@foo>, not C<$foo>.
+
+The exception to this rule is the default behavior of the C<attr> function,
+which will not dereference values which are blessed references (aka
+objects).  See L<$Alias::Deref> for how to change this default behavior.
+
 =head2 Functions
 
 =over 4
 
 =item alias
 
-Given a list of alias-symbol => value pairs, declares aliases
-in the caller's namespace. If the value supplied is a reference, the
+Given a list of name => value pairs, declares aliases
+in the C<caller>s namespace. If the value supplied is a reference, the
 alias is created for the underlying value instead of the reference
 itself (there is no need to use this module to alias references--they
 are automatically "aliased" on assignment).  This allows the user to
-alias all of Perl's basic types.
+alias most of the basic types.
 
 If the value supplied is a scalar compile-time constant, the aliases 
 become read-only. Any attempt to write to them will fail with a run time
@@ -121,13 +131,15 @@ recommended.
 
 Given a hash reference, aliases the values of the hash to the names that
 correspond to the keys.  It always returns the supplied value.  The aliases
-are local to the enclosing block. If any of the values are references, they
-are available as their dereferenced types.  Thus the action is similar to
-saying:
+are local to the enclosing block. If any of the values are unblessed
+references, they are available as their dereferenced types.  Thus the action
+is similar to saying:
 
     alias %{$_[0]}
 
-but, in addition, also localizes the aliases.
+but, in addition, also localizes the aliases, and does not dereference
+objects.  Dereferencing of objects can be forced by setting the C<Deref>
+option.  See L<$Alias::Deref>.
 
 This can be used for convenient access to hash values and hash-based object
 attributes.  
@@ -176,10 +188,23 @@ Specifies a prefix to prepend to the names of localized attributes created
 by C<attr>.  Can be a CODE reference, in which case it will be called with
 the key, and the result will determine the full name of the attribute.  The
 value can have embedded package delimiters ("::" or "'"), which cause the
-attributes to be interned in that namespace instead of the caller's own
+attributes to be interned in that namespace instead of the C<caller>s own
 namespace. For example, setting it to "main::" makes C<use strict 'vars';>
 somewhat more palatable (since we can refer to the attributes as C<$::foo>,
 etc., without actually declaring the attributes).
+
+=item $Alias::Deref
+
+Controls the implicit dereferencing behavior of C<attr>.  If it is set to
+"" or 0, C<attr> will not dereference blessed references.  If it is a true
+value (anything but "", 0, or a CODE reference), all references will be
+made available as their dereferenced types, including values that may be
+objects.  The default is "".
+
+This option can be used as a filter if it is set to a CODE reference, in
+which case it will be called with the key and the value (whenever the value
+happens to be a reference), and the boolean return value will determine if
+that particular reference must be dereferenced.
 
 
 =back
@@ -284,10 +309,12 @@ with the features of this module.
 =head1 NOTES
 
 It is worth repeating that the aliases created by C<alias> and C<const> will
-be created in the caller's namespace (we can use the C<AttrPrefix> option to
+be created in the C<caller>s namespace (we can use the C<AttrPrefix> option to
 specify a different namespace for C<attr>).  If that namespace happens to be
 C<local>ized, the aliases created will be local to that block.  C<attr>
 localizes the aliases for us.
+
+Remember that references will be available as their dereferenced types.
 
 Aliases cannot be lexical, since, by neccessity, they live on the
 symbol table. 
@@ -332,7 +359,7 @@ Version 2.2       1 December 1996
 
 Gurusamy Sarathy                gsar@umich.edu
 
-Copyright (c) 1995 Gurusamy Sarathy. All rights reserved.
+Copyright (c) 1995-97 Gurusamy Sarathy. All rights reserved.
 This program is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself.
 

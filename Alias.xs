@@ -8,12 +8,10 @@ extern "C" {
 }
 #endif
 
-#define save_gp my_save_gp
-
 static void my_save_gp _((GV *gv));
 static void process_flag _((char *varname, SV **svp, char **strp, STRLEN *lenp));
 
-/* copied verbatim from scope.c because it is #ifdeffed out -- WHY??? */
+/* This is available in 5.003_12 and later */
 static void
 my_save_gp(gv)
     GV *gv;
@@ -64,6 +62,16 @@ MODULE = Alias		PACKAGE = Alias		PREFIX = alias_
 
 PROTOTYPES: ENABLE
 
+BOOT:
+#ifdef CVf_NODEBUG    
+{
+    GV *gv = gv_fetchpv("Alias::attr", FALSE, SVt_PVCV);
+    if (gv && GvCV(gv))
+	CvNODEBUG_on(GvCV(gv));
+}
+#endif
+
+
 void
 alias_attr(hashref)
 	SV *	hashref
@@ -71,8 +79,13 @@ alias_attr(hashref)
      PPCODE:
 	{
 	    HV *hv;
+	    int in_destroy = 0;
+	    int deref_call;
 	    
-	    (void)SvREFCNT_inc(hashref);    /* in case LEAVE wants to clobber us */
+	    if (SvREFCNT(hashref) == 0)
+		in_destroy = 1;
+	    
+	    ++SvREFCNT(hashref);	/* in case LEAVE wants to clobber us */
 
 	    if (SvROK(hashref) &&
 		(hv = (HV *)SvRV(hashref)) && (SvTYPE(hv) == SVt_PVHV))
@@ -80,19 +93,23 @@ alias_attr(hashref)
 		SV *val, *tmpsv;
 		char *key;
 		I32 klen;
-		SV *keypfx, *attrpfx;
-		char *keypfx_c, *attrpfx_c;
-		STRLEN keypfx_l, attrpfx_l;
+		SV *keypfx, *attrpfx, *deref;
+		char *keypfx_c, *attrpfx_c, *deref_c;
+		STRLEN keypfx_l, attrpfx_l, deref_l;
 
 		process_flag("Alias::KeyFilter", &keypfx, &keypfx_c, &keypfx_l);
 		process_flag("Alias::AttrPrefix", &attrpfx, &attrpfx_c, &attrpfx_l);
-
+		process_flag("Alias::Deref", &deref, &deref_c, &deref_l);
+		deref_call = (deref && !deref_c);
+		
 		LEAVE;                      /* operate at a higher level */
 		
 		(void)hv_iterinit(hv);
 		while ((val = hv_iternextsv(hv, &key, &klen))) {
 		    GV *gv;
 		    int stype = SvTYPE(val);
+		    int deref_this = 1;
+		    int deref_objects = 0;
 
 		    /* check the key for validity by either looking at
 		     * its prefix, or by calling &$Alias::KeyFilter */
@@ -107,22 +124,40 @@ alias_attr(hashref)
 			    SV *ret = Nullsv;
 			    I32 i;
 			    
-			    ENTER;
-			    SAVETMPS;
-			    PUSHMARK(sp);
+			    ENTER; SAVETMPS; PUSHMARK(sp);
 			    XPUSHs(sv_2mortal(newSVpv(key,klen)));
 			    PUTBACK;
 			    if (perl_call_sv(keypfx, G_SCALAR))
 				ret = *stack_sp--;
 			    SPAGAIN;
 			    i = SvTRUE(ret);
-			    FREETMPS;
-			    LEAVE;
+			    FREETMPS; LEAVE;
 			    if (!i)
 				continue;
 			}
 		    }
 
+		    if (SvROK(val) && deref) {
+			if (deref_c) {
+			    if (deref_l && !(deref_l == 1 && *deref_c == '0'))
+				deref_objects = 1;
+			}
+			else {
+			    dSP;
+			    SV *ret = Nullsv;
+			    
+			    ENTER; SAVETMPS; PUSHMARK(sp);
+			    XPUSHs(sv_2mortal(newSVpv(key,klen)));
+			    XPUSHs(sv_2mortal(newSVsv(val)));
+			    PUTBACK;
+			    if (perl_call_sv(deref, G_SCALAR))
+				ret = *stack_sp--;
+			    SPAGAIN;
+			    deref_this = SvTRUE(ret);
+			    FREETMPS; LEAVE;
+			}
+		    }
+		    
 		    /* attributes may need to be prefixed/renamed */
 		    if (attrpfx) {
 			STRLEN len;
@@ -138,30 +173,35 @@ alias_attr(hashref)
 			    dSP;
 			    SV *ret = Nullsv;
 			    
-			    ENTER;
-			    PUSHMARK(sp);
+			    ENTER; PUSHMARK(sp);
 			    XPUSHs(sv_2mortal(newSVpv(key,klen)));
 			    PUTBACK;
 			    if (perl_call_sv(attrpfx, G_SCALAR))
 				ret = *stack_sp--;
-			    SPAGAIN;
-			    /* can't FREETMPS since we want ret until later */
-			    LEAVE;
-			    key = SvPV_force(ret, len);
+			    SPAGAIN; LEAVE;
+			    key = SvPV(ret, len);
 			    klen = len;
 			}
 		    }
 
-		    if (SvROK(val))  {
-			if ((tmpsv = SvRV(val))) {
-			    stype = SvTYPE(tmpsv);
-			    if (stype == SVt_PVGV)
-				val = tmpsv;
+		    if (SvROK(val) && (tmpsv = SvRV(val))) {
+			if (deref_call) {
+			    if (!deref_this)
+				goto no_deref;
 			}
-		    }
-		    else if (stype != SVt_PVGV)
-			val = sv_2mortal(newRV(val));
+			else if (!deref_objects && SvOBJECT(tmpsv))
+			    goto no_deref;
 
+			stype = SvTYPE(tmpsv);
+			if (stype == SVt_PVGV)
+			    val = tmpsv;
+
+		    }
+		    else if (stype != SVt_PVGV) {
+		    no_deref:
+			val = sv_2mortal(newRV(val));
+		    }
+		    
 		    /* add symbol, forgoing "used once" warnings */
 		    gv = gv_fetchpv(key, GV_ADDMULTI, SVt_PVGV);
 		    
@@ -173,7 +213,7 @@ alias_attr(hashref)
 			save_hash(gv);
 			break;
 		    case SVt_PVGV:
-			save_gp(gv);	    /* hide previous entry in symtab */
+			my_save_gp(gv);	    /* hide previous entry in symtab */
 			break;
 		    case SVt_PVCV:
 			SAVESPTR(GvCV(gv));
@@ -187,6 +227,10 @@ alias_attr(hashref)
 		}
 		ENTER;			    /* in lieu of the LEAVE far beyond */
 	    }
-	    SvREFCNT_dec(hashref);
+	    if (in_destroy)
+		--SvREFCNT(hashref);	    /* avoid calling DESTROY forever */
+	    else
+		SvREFCNT_dec(hashref);
+	    
 	    XPUSHs(hashref);                /* simply return what we got */
 	}
