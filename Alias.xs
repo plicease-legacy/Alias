@@ -10,7 +10,7 @@ extern "C" {
 
 #define save_gp my_save_gp
 
-static void my_save_gp(GV *gv);
+static void my_save_gp _((GV *gv));
 
 /* copied verbatim from scope.c because it is #ifdeffed out -- WHY??? */
 static void
@@ -36,20 +36,26 @@ GV *gv;
 
 MODULE = Alias		PACKAGE = Alias		PREFIX = alias_
 
+PROTOTYPES: ENABLE
+
 void
-alias_attr(href)
-	SV *	href
+alias_attr(hashref)
+	SV *	hashref
+	PROTOTYPE: $
      PPCODE:
 	{
 	    HV *hv;
 	    
-	    if (SvROK(href) && (hv = (HV *)SvRV(href)) && (SvTYPE(hv) == SVt_PVHV)) {
+	    (void)SvREFCNT_inc(hashref);    /* in case LEAVE wants to clobber us */
+
+	    if (SvROK(hashref) &&
+		(hv = (HV *)SvRV(hashref)) && (SvTYPE(hv) == SVt_PVHV))
+	    {
 		SV *val;
 		SV *tmpsv;
 		char *key;
 		I32 klen;
 		
-		SvREFCNT_inc(hv);           /* in case LEAVE wants to clobber us */
 		LEAVE;                      /* operate at a higher level */
 		
 		(void)hv_iterinit(hv);
@@ -88,7 +94,8 @@ alias_attr(href)
 		    }
 		    sv_setsv(gv, val);      /* alias the SV */
 		}
-		SvREFCNT_dec(hv);
 		ENTER;                      /* in lieu of the LEAVE far beyond */
 	    }
+	    SvREFCNT_dec(hashref);
+	    XPUSHs(hashref);                /* simply return what we got */
 	}

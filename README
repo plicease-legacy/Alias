@@ -1,12 +1,11 @@
 This is the README file for "Alias", the Perl module
 that performs aliasing services.
 
-This is Version 2.0.
+This is Version 2.1.
 
-Perl Version 5.001m or later is required.
-
-You may also need MakeMaker Ver. 5.09 or later (check the
-file $PERLLIB/ExtUtils/MakeMaker.pm).
+Perl Version 5.002 or later is required, and you need to be
+on an XSsible system supported by MakeMaker (which comes with 
+perl).
 
 You may find this module useful if you:
 
@@ -19,13 +18,16 @@ You may find this module useful if you:
    * want the freedom to put what you want, when you want in
      the symbol table without having to deal with wierd syntax
 
-   * need to use constants in your program and you don't
+   * need to use scalar constants in your program since you don't
      trust yourself from changing $PI 
 
-This release has the all-new C<attr> function that installs a
-whole hash on the symbol table with implicit localization. This
-allows you to access object attributes without having to deref the
-object everytime, as in most other OO languages.
+Most notably, there is an C<attr> function that installs a whole 
+hash on the symbol table with implicit localization. This allows 
+you to access object attributes without having to deref the object 
+everytime, as in most other OO languages.
+
+The other functions are just convenient wrappers for "obscure" perl
+functionality.
 
 The C<attr> functionality may belong in the perl core, but I am
 making it available as part of this module for folks to see what
