@@ -4,22 +4,25 @@
 
 package Alias;
 
+require 5.001;
 require Exporter;
 @ISA = qw(Exporter);
 @EXPORT = qw(alias);
 @EXPORT_OK = qw(const);
-$VERSION = 1.0;
+
+$VERSION = 1.20;
+
+use Carp;
 
 sub alias {
     my($i) = scalar(@_) - 1 ;
     my($j) = $i-1;
-    die "Need even number of args" if $j % 2;
+    croak "Need even number of args" if $j % 2;
     my($pkg) = caller;            # for namespace soundness
     while ($j >= 0) { 
-        if ('GLOB' eq ref $_[$i]) { *{"$pkg\:\:$_[$j]"} = ${$_[$i]} }
-        elsif (ref $_[$i])        { *{"$pkg\:\:$_[$j]"} = $_[$i] }
-        else                      { *{"$pkg\:\:$_[$j]"} = \$_[$i] }
-        $i--; $j--;
+        *{"$pkg\:\:$_[$j]"} = (defined($_[$i]) && ref($_[$i])) ?
+	  (ref($_[$i]) eq 'GLOB') ? ${$_[$i]} : $_[$i] : \$_[$i];
+        $i -= 2; $j -= 2;
     }
 }
 
@@ -73,7 +76,8 @@ a C<local>.
     	  Ten => \@ten, Ten => \%ten;
     alias TeN => \*ten;  # same as *TeN = *ten
     const _TEN_ => 10;
-     
+    
+    # aliasing basic types
     $ten = 20;   
     print "$TEN|$Ten|$ten\n";
     sub ten { print "10\n"; }
@@ -82,6 +86,7 @@ a C<local>.
     &Ten;
     print @Ten, "|", %Ten, "\n";
 
+    # dynamically scoped aliases
     @DYNAMIC = qw(m n o);
     {
        my $tmp = [ qw(a b c d) ];
@@ -94,6 +99,15 @@ a C<local>.
     }
     print @DYNAMIC, "|", @PERM, "\n";
 
+    # named closures
+    my($lex) = 'abcd';
+    $closure = sub { print $lex, "\n" };
+    alias NAMEDCLOSURE => \&$closure;
+    NAMEDCLOSURE();
+    $lex = 'pqrs';
+    NAMEDCLOSURE();
+
+    # should lead to run-time error
     $_TEN_ = 20;
 
 
@@ -109,17 +123,30 @@ symbol table.
 
 Lexicals can be aliased. Note that this gives us a means of reversing
 the action of anonymous type generators C<\>, C<[]> and C<{}>.  Which
-means you can anonymously construct data and give it a symboltable
+means you can anonymously construct data and give it a symbol-table
 presence when you choose.
 
 Remember that aliases are very much like references, only you don't
 have to de-reference them as often.  Which means you won't have to
-pound on the dollars so much.
+bounce on Shift-4 so much.
+
+You can make named closures with this scheme, by simply aliasing
+a closure and giving it a symbol table presence.
 
 It is possible to alias packages, but that might be construed as
 abuse.
 
 Using this package will lead to a much reduced urge to use typeglobs.
+
+
+=head1 VERSION
+
+1.2    Bugfix in the while loop, and other cleanup. Thanks to Ian Phillips
+       <ian@pipex.net>.
+
+1.1    Added named closures to pod
+
+1.0    Released to perl5-porters@nicoh.com
 
 
 =head1 AUTHOR

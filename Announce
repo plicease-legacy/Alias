@@ -21,3 +21,98 @@ to the pod, and with the redundant C<eval>s excised.
 
  - Sarathy.
    gsar@engin.umich.edu
+
+--------
+
+To: ian <ian@pipex.net>
+cc: gsar@engin.umich.edu, perl5-porters@nicoh.com, andreas.koenig@mind.de
+Subject: Re: constants, aliases and other curios 
+In-reply-to: Your message of "Sun, 22 Oct 1995 14:30:39 GMT."
+             <199510221430.OAA14910@pipe.pipex.net> 
+Date: Sun, 22 Oct 1995 12:57:18 -0400
+From: Gurusamy Sarathy <gsar@engin.umich.edu>
+X-Filter: mailagent [version 3.0 PL44] for k@mind.de
+
+On Sun, 22 Oct 1995 14:30:39 GMT, ian wrote:
+>In article <199510200659.CAA00336@aatma.engin.umich.edu> you write:
+>
+>>sub alias {
+>>    my($i) = scalar(@_) - 1 ;
+>>    my($j) = $i-1;
+>>    die "Need even number of args" if $j % 2;
+>>    my($pkg) = caller;            # for namespace soundness
+>>    while ($j >= 0) { 
+>>        if ('GLOB' eq ref $_[$i]) { *{"$pkg\:\:$_[$j]"} = ${$_[$i]} }
+>>        elsif (ref $_[$i])        { *{"$pkg\:\:$_[$j]"} = $_[$i] }
+>>        else                      { *{"$pkg\:\:$_[$j]"} = \$_[$i] }
+>>        $i--; $j--;
+>>    }
+>>}
+>
+>Shouldn't that be $i -= 2; $j -= 2; , or am I missing something?
+
+But of course.  And I'm ashamed of my sloppiness :-(
+
+>
+>I'd usually use "shift" doing this sort of thing, and I like the :?
+>operator:
+>
+>use Carp;
+>sub alias {
+>    my $pkg = caller;		# for namespace soundness
+>    while ( @_ ) {
+>	my ($from, $to) = (shift, shift);
+
+That will not preserve referenceness to the original value if $to is
+not a ref. That's the reason why I use $_[$i] all over the place. And
+that leads to the $i, $j mess.
+           
+>	croak "alias needs even number of args" unless defined $to;
+>	*{"$pkg\:\:$from"} = ref $to ? ref $to eq GLOB ? $$to : $to : \$to;
+>    }
+>}
+>
+>NB - there's also a rearrangement of the conditionals needed, even if
+>you don't like ??:: - test for the "ref" first, then for ref eq GLOB.
+>Otherwise " alias 'TEN'=>$ten; " provokes an "undefined reference" warning.
+
+Yes, and while we are at it, we might as well fix it to be safe against
+undefined values as well.  I think
+
+     *{"$pkg\:\:$_[$j]"} = (defined($_[$i]) && ref($_[$i])) ?
+	  (ref($_[$i]) eq 'GLOB') ? ${$_[$i]} : $_[$i] : \$_[$i];
+
+should do it right.  And I prefer croaking up ahead if there are odd number
+of args. This is another reason for the $i, $j mess.
+
+>
+>NB2 - yes, \$to is a reference to the actual parameter.
+
+Only if $to is a ref. Else it is a copy. Which means this won't work
+to produce constants. This should cause a run time error but it doesn't
+in your version:
+
+    use Alias;
+    alias TEN => 10;
+    $TEN = 20;
+
+>
+>BTW - that double-quoted string irks me. I feel sure there ought to be a
+>syntax for accessing the package/variable without having to concatenate
+>bits (which perl will immediately split apart again), but for the life
+>of me I can't think what it might be...
+
+You could use "." but that won't be anymore efficient.
+
+>
+>Ian
+>
+
+Thanks very much for your comments Ian, I have attached a copy of the
+package with the changes, and (wonder of wonders) an exciting new addition
+to the pod, named closures.
+
+ - Sarathy.
+   gsar@engin.umich.edu
+
+
