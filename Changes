@@ -6,6 +6,11 @@ HISTORY - release history for Alias
 
 =over 8
 
+=item 2.32
+
+No change in functionality.  Added #defines for compatibility with the
+5.006 development branch (courtesy Nathan Torkington <gnat@frii.com>).
+
 =item 2.31
 
 save_gp() is now exported from core, so use it instead of our own

@@ -12,7 +12,7 @@ require DynaLoader;
 @EXPORT = qw(alias attr);
 @EXPORT_OK = qw(const);
 
-$VERSION = $VERSION = '2.31';
+$VERSION = $VERSION = '2.32';
 
 use Carp;
 
@@ -352,14 +352,14 @@ Tied variables cannot be aliased properly, yet.
 
 =head1 VERSION
 
-Version 2.31       22 September 1997
+Version 2.32       30 Apr 1999
 
 
 =head1 AUTHOR
 
 Gurusamy Sarathy                gsar@umich.edu
 
-Copyright (c) 1995-97 Gurusamy Sarathy. All rights reserved.
+Copyright (c) 1995-99 Gurusamy Sarathy. All rights reserved.
 This program is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself.
 

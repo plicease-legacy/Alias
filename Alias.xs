@@ -8,6 +8,19 @@ extern "C" {
 }
 #endif
 
+#ifndef PERL_VERSION
+#include "patchlevel.h"
+#define PERL_REVISION         5
+#define PERL_VERSION          PATCHLEVEL
+#define PERL_SUBVERSION       SUBVERSION
+#endif
+
+#if PERL_REVISION == 5 && (PERL_VERSION < 4 || (PERL_VERSION == 4 && PERL_SUBVERSION <= 75 ))
+
+#define PL_stack_sp	stack_sp
+
+#endif
+
 static void process_flag _((char *varname, SV **svp, char **strp, STRLEN *lenp));
 
 static void
@@ -104,7 +117,7 @@ alias_attr(hashref)
 			    XPUSHs(sv_2mortal(newSVpv(key,klen)));
 			    PUTBACK;
 			    if (perl_call_sv(keypfx, G_SCALAR))
-				ret = *stack_sp--;
+				ret = *PL_stack_sp--;
 			    SPAGAIN;
 			    i = SvTRUE(ret);
 			    FREETMPS; LEAVE;
@@ -127,7 +140,7 @@ alias_attr(hashref)
 			    XPUSHs(sv_2mortal(newSVsv(val)));
 			    PUTBACK;
 			    if (perl_call_sv(deref, G_SCALAR))
-				ret = *stack_sp--;
+				ret = *PL_stack_sp--;
 			    SPAGAIN;
 			    deref_this = SvTRUE(ret);
 			    FREETMPS; LEAVE;
@@ -153,7 +166,7 @@ alias_attr(hashref)
 			    XPUSHs(sv_2mortal(newSVpv(key,klen)));
 			    PUTBACK;
 			    if (perl_call_sv(attrpfx, G_SCALAR))
-				ret = *stack_sp--;
+				ret = *PL_stack_sp--;
 			    SPAGAIN; LEAVE;
 			    key = SvPV(ret, len);
 			    klen = len;
