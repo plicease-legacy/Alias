@@ -1,4 +1,6 @@
+README
 Alias.pm
-Announce
+Alias.xs
 MANIFEST
 Makefile.PL
+t/alias.t

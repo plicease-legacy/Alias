@@ -1,0 +1,46 @@
+This is the README file for "Alias", the Perl module
+that performs aliasing services.
+
+This is Version 2.0-beta.
+
+Perl Version 5.001 or later is required.
+
+You may also need MakeMaker Ver. 5.09 or later (check the
+file $PERLSRC/lib/ExtUtils/MakeMaker).
+
+You may find this module useful if you:
+
+   * are tired of dereferencing hash-based object attributes
+
+   * wish to use fewer $ and -> signs
+
+   * are a little scared of using typeglobs
+
+   * want the freedom to put what you want, when you want in
+     the symbol table
+
+   * need to use constants in your program because you don't
+     trust yourself from changing $PI
+
+It would be interesting to benchmark how much less/more efficient C<attr> is
+when compared to regular hash access of object attributes under various
+degrees of use.
+
+Comments are always very welcome.
+
+ - Sarathy.
+   gsar@umich.edu
+
+-------------------
+Installation is via the standard mantra.
+The distribution assumes you have dynamic linking available. Type
+
+      perl Makefile.PL
+      make
+      make test
+
+If the tests pass, you can type
+
+      make install
+
+to install the module.

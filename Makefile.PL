@@ -1,10 +1,8 @@
-use lib ".";
-require Alias;
 use ExtUtils::MakeMaker;
-WriteMakefile(NAME => 'Alias',
-	      VERSION => sprintf("%.2f",$Alias::VERSION),
-	      dist => {COMPRESS=>'gzip -9f'},
-	      'macro' => {CONFIGDEP => 'Alias.pm'}
 
-	     );
-
+WriteMakefile(
+    'NAME'	=> 'Alias',
+    'VERSION'	=> '2.0',
+    'linkext'   => {LINKTYPE => 'dynamic'},
+    'dist'      => {COMPRESS=>'gzip -9f', SUFFIX => 'gz'}
+);
