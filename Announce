@@ -1,0 +1,23 @@
+From owner-perl5-porters@nicoh.com  Fri Oct 20 08:08:01 1995
+To: Tim Bunce <Tim.Bunce@ig.co.uk>
+Cc: perl5-porters@africa.nicoh.com, gsar@engin.umich.edu
+Subject: Re: constants, aliases and other curios
+In-Reply-To: Following up to my message of "Fri, 20 Oct 1995 00:53:45 EDT." <199510200453.AAA29215@aatma.engin.umich.edu>
+Date: Fri, 20 Oct 1995 02:59:11 -0400
+From: Gurusamy Sarathy <gsar@engin.umich.edu>
+Sender: owner-perl5-porters@nicoh.com
+List-Name: perl5-porters
+Precedence: bulk
+X-Filter: mailagent [version 3.0 PL44] for k@mind.de
+
+
+This stuff is getting curiouser and curiouser.  I just
+realized that you can also have fully dynamically scoped
+aliases, simply be pre-declaring the name as a local. You
+don't ever need to use a glob for aliasing with this scheme.
+
+Here's the latest Alias.pm with a significant addition
+to the pod, and with the redundant C<eval>s excised.
+
+ - Sarathy.
+   gsar@engin.umich.edu
