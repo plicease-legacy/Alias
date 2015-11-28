@@ -15,6 +15,35 @@ extern "C" {
 #define PERL_SUBVERSION       SUBVERSION
 #endif
 
+#ifndef GvCV_set
+#define GvCV_set(gv,cv) GvCV((gv)) = (cv)
+#endif
+
+/* Since perl 5.13.10, GvCV() is only a rvalue so we no longer can store a
+ * pointer to the gvcv member of the gv.
+ *
+ * Adapted from a similar fix in Scope-Upper-0.14 by Vincent Pit.
+ */
+
+typedef struct {
+	GV *gv;
+	CV *old_cv;
+} saved_cv;
+
+static void restore_gvcv(saved_cv *s) {
+	GvCV_set(s->gv, s->old_cv);
+	Safefree(s);
+}
+
+static void save_gvcv(GV *gv) {
+	saved_cv *s;
+	Newx(s, 1, saved_cv);
+ 	s->gv     = gv;
+ 	s->old_cv = GvCV(gv);
+
+	SAVEDESTRUCTOR(restore_gvcv, s);
+}
+
 #if PERL_REVISION == 5 && (PERL_VERSION < 4 || (PERL_VERSION == 4 && PERL_SUBVERSION <= 75 ))
 
 #define PL_stack_sp	stack_sp
@@ -205,8 +234,8 @@ alias_attr(hashref)
 			save_gp(gv,TRUE);   /* hide previous entry in symtab */
 			break;
 		    case SVt_PVCV:
-			SAVESPTR(GvCV(gv));
-			GvCV(gv) = Null(CV*);
+			save_gvcv(gv);
+			GvCV_set(gv,Null(CV*));
 			break;
 		    default:
 			save_scalar(gv);
